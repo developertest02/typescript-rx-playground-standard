@@ -34,80 +34,36 @@ import { mergeAll } from 'rxjs/operators/mergeAll';
 import { NetworkModel, NetworkModelWithStatus } from './models/network-models';
 import { forkJoin } from 'rxjs/observable/forkJoin';
 import { mergeMap } from 'rxjs/operators/mergeMap';
-import { firstValurFrom } from 'rxjs/index';
 const collection1 = of([1, 2, 3, 4, 5]);
 const collection2 = of([6, 7, 8, 9, 10]);
-//const observable = interval(1000);
-let result$: NetworkModelWithStatus[] = [];
+
+function combineLatestExample(): void {
+  const firstTimer = timer(0, 1000); // emit 0, 1, 2... after every second, starting from now
+  const secondTimer = timer(500, 1000); // emit 0, 1, 2... after every second, starting 0,5s from now
+  const combinedTimers = combineLatest([firstTimer, secondTimer]);
+
+  combinedTimers.subscribe((value) => console.log(value));
+}
+
+interface Person {
+  firstName: string;
+  lastName: string;
+}
+
 const ds = new DataService();
-
-function run2() {
-  const networks = ds.getNetworkModels();
-  const obs$: Observable<NetworkModel>[] = [];
-  networks.forEach((networksResponse) => {
-    networksResponse.forEach((singleNetworkResponse) => {
-      const xer = ds.getConnectionStatus(singleNetworkResponse).pipe(
-        tap(
-          (statusValue) =>
-            (singleNetworkResponse.connectionInfo.status = statusValue)
-        ),
-        map(() => singleNetworkResponse)
-      );
-      obs$.push(xer);
-    });
-  });
-  //dds
-  const perp = forkJoin(obs$);
-  perp.subscribe((n) => console.log(n));
-}
-function run() {
-  const networks = ds.getNetworkModels();
-
-  let maps$: Observable<NetworkModelWithStatus>[] = [];
-  networks.forEach((network) => {
-    maps$ = withConnections(network);
-  });
-  const ppe = forkJoin(maps$).pipe(
-    tap((models) => {
-      models.forEach((model) => {
-        model.network.connectionInfo.status = model.status;
-      });
-    })
+function filterThePeople(): void {
+  const networkModels = ds.getNetworkModels();
+  const networkWithStatus = networkModels.pipe(
+    mergeMap((response) =>
+      response.map((nv) =>
+        ds.getConnectionStatus(nv).pipe(
+          tap((status) => (nv.connectionInfo.status = status)),
+          map(() => nv)
+        )
+      )
+    )
   );
-  ppe.subscribe((n) => console.log(n));
-}
-function networksWithStatus(
-  models: NetworkModel[]
-): Observable<NetworkModel>[] {
-  let maps$: Observable<NetworkModelWithStatus>[] = withConnections(models);
 
-  models.forEach((network) => {
-    maps$ = withConnections(network);
-  });
+  
 }
-function withConnections(
-  models: NetworkModel[]
-): Observable<NetworkModelWithStatus>[] {
-  console.log(`Getting Map Status for models`);
-  const result: Observable<NetworkModelWithStatus>[] = [];
-  models.forEach((item) => {
-    result.push(withConnection(item));
-  });
-  return result;
-}
-function withConnection(
-  model: NetworkModel
-): Observable<NetworkModelWithStatus> {
-  console.log(`Getting Map Status for ${model.name}`);
-  const result = ds.getConnectionStatus(model).pipe(
-    map((value) => {
-      const ws: NetworkModelWithStatus = {
-        network: model,
-        status: value,
-      };
-      return ws;
-    })
-  );
-  return result;
-}
-run2();
+//combineLatestExample();
